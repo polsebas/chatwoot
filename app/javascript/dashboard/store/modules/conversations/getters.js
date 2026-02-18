@@ -58,6 +58,10 @@ const getters = {
     return attachments[selectedChatId] || [];
   },
   getChatListFilters: ({ conversationFilters }) => conversationFilters,
+  getPendingAgentResponse:
+    ({ pendingAgentResponses }) =>
+    conversationId =>
+      pendingAgentResponses[conversationId] || null,
   getLastEmailInSelectedChat: (stage, _getters) => {
     const selectedChat = _getters.getSelectedChat;
     const { messages = [] } = selectedChat;

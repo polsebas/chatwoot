@@ -56,7 +56,15 @@
       "BUTTON_TEXT": "Disconnect"
     },
     "SIDEBAR_DESCRIPTION": {
-      "DIALOGFLOW": "Dialogflow is a natural language processing platform for building conversational interfaces. Integrating it with {installationName} lets bots handle queries first and transfer them to agents when needed. It helps qualify leads and reduce agent workload by answering FAQs. To add Dialogflow, create a Service Account in Google Console and share the credentials. Refer to the docs for details"
+      "DIALOGFLOW": "Dialogflow is a natural language processing platform for building conversational interfaces. Integrating it with {installationName} lets bots handle queries first and transfer them to agents when needed. It helps qualify leads and reduce agent workload by answering FAQs. To add Dialogflow, create a Service Account in Google Console and share the credentials. Refer to the docs for details",
+      "AGENTOS": "Agno AgentOS is a runtime for multi-agent systems. Integrating it with {installationName} lets you route incoming conversations to a configured AgentOS agent or team for automated replies. You will need the AgentOS base URL and (optionally) a security key if authentication is enabled."
+    },
+    "AGENTOS_SETTINGS": {
+      "RESPONSE_MODE": "Response mode",
+      "RESPONSE_MODE_AUTO": "Automatic",
+      "RESPONSE_MODE_REVIEW": "Review with countdown",
+      "REVIEW_COUNTDOWN_SECONDS": "Review countdown (seconds)",
+      "REVIEW_COUNTDOWN_HELP": "Seconds to wait for admin decision when response mode is Review with countdown. Default: 30."
     }
   }
 }

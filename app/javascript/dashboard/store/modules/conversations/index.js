@@ -23,6 +23,7 @@ const state = {
   syncConversationsMessages: {},
   conversationFilters: {},
   copilotAssistant: {},
+  pendingAgentResponses: {},
 };
 
 const getConversationById = _state => conversationId => {
@@ -375,6 +376,16 @@ export const mutations = {
   },
   [types.SET_INBOX_CAPTAIN_ASSISTANT](_state, data) {
     _state.copilotAssistant = data.assistant;
+  },
+  [types.SET_PENDING_AGENT_RESPONSE](_state, { conversationId, pending }) {
+    if (conversationId && pending) {
+      _state.pendingAgentResponses[conversationId] = pending;
+    }
+  },
+  [types.CLEAR_PENDING_AGENT_RESPONSE](_state, conversationId) {
+    if (conversationId) {
+      delete _state.pendingAgentResponses[conversationId];
+    }
   },
 };
 

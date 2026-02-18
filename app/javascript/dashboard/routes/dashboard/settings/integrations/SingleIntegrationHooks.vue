@@ -1,5 +1,5 @@
 <script setup>
-import { defineProps, defineEmits } from 'vue';
+import { defineProps, defineEmits, computed } from 'vue';
 import { useIntegrationHook } from 'dashboard/composables/useIntegrationHook';
 import { useBranding } from 'shared/composables/useBranding';
 import Button from 'dashboard/components-next/button/Button.vue';
@@ -18,6 +18,30 @@ const { integration, hasConnectedHooks } = useIntegrationHook(
 );
 
 const { replaceInstallationName } = useBranding();
+
+const integrationLogoLight = computed(() => {
+  const logo = integration.value?.logo;
+  return logo
+    ? `/dashboard/images/integrations/${logo}`
+    : `/dashboard/images/integrations/${props.integrationId}.png`;
+});
+
+const integrationLogoDark = computed(() => {
+  const logo = integration.value?.logo;
+  if (!logo) {
+    return `/dashboard/images/integrations/${props.integrationId}-dark.png`;
+  }
+
+  if (logo.endsWith('-dark.png')) {
+    return `/dashboard/images/integrations/${logo}`;
+  }
+
+  if (logo.endsWith('.png')) {
+    return `/dashboard/images/integrations/${logo.replace(/\.png$/, '-dark.png')}`;
+  }
+
+  return `/dashboard/images/integrations/${logo}`;
+});
 </script>
 
 <template>
@@ -27,11 +51,11 @@ const { replaceInstallationName } = useBranding();
     <div class="flex items-center justify-center">
       <div class="flex h-16 w-16 items-center justify-center">
         <img
-          :src="`/dashboard/images/integrations/${integrationId}.png`"
+          :src="integrationLogoLight"
           class="max-w-full rounded-md border border-n-weak shadow-sm block dark:hidden bg-n-alpha-3 dark:bg-n-alpha-2"
         />
         <img
-          :src="`/dashboard/images/integrations/${integrationId}-dark.png`"
+          :src="integrationLogoDark"
           class="max-w-full rounded-md border border-n-weak shadow-sm hidden dark:block bg-n-alpha-3 dark:bg-n-alpha-2"
         />
       </div>

@@ -11,6 +11,8 @@ class HookJob < MutexApplicationJob
       process_slack_integration(hook, event_name, event_data)
     when 'dialogflow'
       process_dialogflow_integration(hook, event_name, event_data)
+    when 'agentos'
+      process_agentos_integration(hook, event_name, event_data)
     when 'google_translate'
       google_translate_integration(hook, event_name, event_data)
     when 'leadsquared'
@@ -37,6 +39,51 @@ class HookJob < MutexApplicationJob
     return unless ['message.created', 'message.updated'].include?(event_name)
 
     Integrations::Dialogflow::ProcessorService.new(event_name: event_name, hook: hook, event_data: event_data).perform
+  end
+
+  def process_agentos_integration(hook, event_name, event_data)
+    return unless ['message.created'].include?(event_name)
+
+    message = event_data[:message]
+    buffer_seconds = hook.settings['buffer_seconds'].to_i
+
+    if buffer_seconds.positive? && !event_data[:agentos_buffered]
+      buffer_ttl = [buffer_seconds + 5.minutes.to_i, 1.hour.to_i].max
+      buffer_key = format(
+        ::Redis::Alfred::AGENTOS_MESSAGE_BUFFER_KEY,
+        hook_id: hook.id,
+        conversation_id: message.conversation_id
+      )
+      Redis::Alfred.set(buffer_key, message.id, ex: buffer_ttl)
+
+      HookJob.set(wait: buffer_seconds.seconds).perform_later(
+        hook,
+        event_name,
+        message: message,
+        agentos_buffered: true,
+        agentos_buffer_message_id: message.id
+      )
+      return
+    end
+
+    if buffer_seconds.positive? && event_data[:agentos_buffered]
+      expected_message_id = event_data[:agentos_buffer_message_id].to_s
+      buffer_key = format(
+        ::Redis::Alfred::AGENTOS_MESSAGE_BUFFER_KEY,
+        hook_id: hook.id,
+        conversation_id: message.conversation_id
+      )
+      latest_message_id = Redis::Alfred.get(buffer_key).to_s
+
+      # A newer message arrived within the buffer window; skip processing this one.
+      return unless latest_message_id == expected_message_id
+    end
+
+    Integrations::Agentos::ProcessorService.new(
+      event_name: event_name,
+      hook: hook,
+      event_data: { message: message }
+    ).perform
   end
 
   def google_translate_integration(hook, event_name, event_data)

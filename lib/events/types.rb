@@ -57,4 +57,7 @@ module Events::Types
 
   # copilot events
   COPILOT_MESSAGE_CREATED = 'copilot.message.created'
+
+  # pending agent response (human-in-the-loop)
+  AGENT_RESPONSE_PENDING = 'agent_response.pending'
 end

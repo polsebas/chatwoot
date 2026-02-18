@@ -1,6 +1,7 @@
 import types from '../../mutation-types';
 import ConversationApi from '../../../api/inbox/conversation';
 import MessageApi from '../../../api/inbox/message';
+import PendingAgentResponseApi from '../../../api/inbox/pendingAgentResponse';
 import { MESSAGE_STATUS, MESSAGE_TYPE } from 'shared/constants/messages';
 import { createPendingMessage } from 'dashboard/helper/commons';
 import {
@@ -31,14 +32,61 @@ export const hasMessageFailedWithExternalError = pendingMessage => {
 
 // actions
 const actions = {
-  getConversation: async ({ commit }, conversationId) => {
+  getConversation: async ({ commit, dispatch }, conversationId) => {
     try {
       const response = await ConversationApi.show(conversationId);
       commit(types.UPDATE_CONVERSATION, response.data);
       commit(`contacts/${types.SET_CONTACT_ITEM}`, response.data.meta.sender);
+      dispatch('fetchPendingAgentResponse', conversationId);
     } catch (error) {
       // Ignore error
     }
+  },
+
+  fetchPendingAgentResponse: async ({ commit }, conversationId) => {
+    try {
+      const { data } = await PendingAgentResponseApi.get(conversationId);
+      commit(types.SET_PENDING_AGENT_RESPONSE, {
+        conversationId,
+        pending: data,
+      });
+    } catch {
+      commit(types.CLEAR_PENDING_AGENT_RESPONSE, conversationId);
+    }
+  },
+
+  setPendingAgentResponse: ({ commit }, { conversationId, pending }) => {
+    commit(types.SET_PENDING_AGENT_RESPONSE, { conversationId, pending });
+  },
+
+  clearPendingAgentResponse: ({ commit }, conversationId) => {
+    commit(types.CLEAR_PENDING_AGENT_RESPONSE, conversationId);
+  },
+
+  approvePendingAgentResponse: async (
+    { commit, dispatch },
+    { conversationId, id }
+  ) => {
+    const { data } = await PendingAgentResponseApi.approve(conversationId, id);
+    commit(types.CLEAR_PENDING_AGENT_RESPONSE, conversationId);
+    dispatch('addMessage', data);
+  },
+
+  correctPendingAgentResponse: async (
+    { commit },
+    { conversationId, id, correctionContext }
+  ) => {
+    await PendingAgentResponseApi.correct(
+      conversationId,
+      id,
+      correctionContext
+    );
+    commit(types.CLEAR_PENDING_AGENT_RESPONSE, conversationId);
+  },
+
+  discardPendingAgentResponse: async ({ commit }, { conversationId, id }) => {
+    await PendingAgentResponseApi.discard(conversationId, id);
+    commit(types.CLEAR_PENDING_AGENT_RESPONSE, conversationId);
   },
 
   fetchAllConversations: async ({ commit, state, dispatch }) => {

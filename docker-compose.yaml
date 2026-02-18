@@ -1,7 +1,8 @@
-version: '3'
-
 services:
-  base: &base
+  base: &defaults
+    tty: true
+    stdin_open: true
+    env_file: .env
     build:
       context: .
       dockerfile: ./docker/Dockerfile
@@ -10,16 +11,17 @@ services:
         EXECJS_RUNTIME: 'Node'
         RAILS_ENV: 'development'
         RAILS_SERVE_STATIC_FILES: 'false'
-    tty: true
-    stdin_open: true
     image: chatwoot:development
-    env_file: .env
 
   rails:
-    <<: *base
+    <<: *defaults
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     build:
       context: .
       dockerfile: ./docker/dockerfiles/rails.Dockerfile
+      additional_contexts:
+        base: service:base
     image: chatwoot-rails:development
     volumes:
       - ./:/app:delegated
@@ -44,7 +46,9 @@ services:
     command: ["bundle", "exec", "rails", "s", "-p", "3000", "-b", "0.0.0.0"]
 
   sidekiq:
-    <<: *base
+    <<: *defaults
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     image: chatwoot-rails:development
     volumes:
       - ./:/app:delegated
@@ -62,10 +66,12 @@ services:
     command: ["bundle", "exec", "sidekiq", "-C", "config/sidekiq.yml"]
 
   vite:
-    <<: *base
+    <<: *defaults
     build:
       context: .
       dockerfile: ./docker/dockerfiles/vite.Dockerfile
+      additional_contexts:
+        base: service:base
     image: chatwoot-vite:development
     volumes:
       - ./:/app:delegated
@@ -92,13 +98,15 @@ services:
     environment:
       - POSTGRES_DB=chatwoot
       - POSTGRES_USER=postgres
-      - POSTGRES_PASSWORD=
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-postgres}
 
   redis:
     image: redis:alpine
     restart: always
-    command: ["sh", "-c", "redis-server --requirepass \"$REDIS_PASSWORD\""]
+    command: ["sh", "-c", "redis-server --requirepass \"${REDIS_PASSWORD:-}\""]
     env_file: .env
+    environment:
+      - REDIS_PASSWORD=${REDIS_PASSWORD:-}
     volumes:
       - redis:/data/redis
     ports:

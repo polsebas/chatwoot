@@ -10,7 +10,16 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.1].define(version: 2026_01_30_061021) do
+ActiveRecord::Schema[7.1].define(version: 2026_02_17_120000) do
+  create_schema "ai"
+  create_schema "sia_ia"
+  create_schema "tenant_00000000000000000000000000000001"
+  create_schema "tenant_00000000000000000000000000000002"
+  create_schema "tenant_00000000000000000000000000000010"
+  create_schema "tenant_6f79b3cd59cd458286a3d131ed41f7b9"
+  create_schema "tenant_89b0f76c460c45e0ba6ac7ea7baffea9"
+  create_schema "tenant_d2a3a3e994f241cc977fa2ce2d26f475"
+
   # These extensions should be enabled to support this database
   enable_extension "pg_stat_statements"
   enable_extension "pg_trgm"
@@ -1048,6 +1057,24 @@ ActiveRecord::Schema[7.1].define(version: 2026_01_30_061021) do
     t.index ["user_id"], name: "index_notifications_on_user_id"
   end
 
+  create_table "pending_agent_responses", force: :cascade do |t|
+    t.bigint "conversation_id", null: false
+    t.bigint "account_id", null: false
+    t.bigint "inbox_id", null: false
+    t.text "content", null: false
+    t.string "source", default: "agentos", null: false
+    t.bigint "hook_id"
+    t.jsonb "metadata", default: {}
+    t.datetime "expires_at", null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["account_id"], name: "index_pending_agent_responses_on_account_id"
+    t.index ["conversation_id", "created_at"], name: "index_pending_agent_responses_on_conversation_created_at"
+    t.index ["conversation_id"], name: "index_pending_agent_responses_on_conversation_id"
+    t.index ["hook_id"], name: "index_pending_agent_responses_on_hook_id"
+    t.index ["inbox_id"], name: "index_pending_agent_responses_on_inbox_id"
+  end
+
   create_table "platform_app_permissibles", force: :cascade do |t|
     t.bigint "platform_app_id", null: false
     t.string "permissible_type", null: false
@@ -1272,6 +1299,10 @@ ActiveRecord::Schema[7.1].define(version: 2026_01_30_061021) do
   add_foreign_key "active_storage_attachments", "active_storage_blobs", column: "blob_id"
   add_foreign_key "active_storage_variant_records", "active_storage_blobs", column: "blob_id"
   add_foreign_key "inboxes", "portals"
+  add_foreign_key "pending_agent_responses", "accounts"
+  add_foreign_key "pending_agent_responses", "conversations"
+  add_foreign_key "pending_agent_responses", "inboxes"
+  add_foreign_key "pending_agent_responses", "integrations_hooks", column: "hook_id"
   create_trigger("accounts_after_insert_row_tr", :generated => true, :compatibility => 1).
       on("accounts").
       after(:insert).

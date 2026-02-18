@@ -15,6 +15,7 @@ const props = defineProps({
     type: [String, Number],
     required: true,
   },
+  integrationLogo: { type: String, default: '' },
   integrationName: { type: String, default: '' },
   integrationDescription: { type: String, default: '' },
   integrationEnabled: { type: Boolean, default: false },
@@ -31,6 +32,31 @@ const { replaceInstallationName } = useBranding();
 const dialogRef = ref(null);
 
 const accountId = computed(() => store.getters.getCurrentAccountId);
+
+const integrationLogoLight = computed(() => {
+  return props.integrationLogo
+    ? `/dashboard/images/integrations/${props.integrationLogo}`
+    : `/dashboard/images/integrations/${props.integrationId}.png`;
+});
+
+const integrationLogoDark = computed(() => {
+  if (!props.integrationLogo) {
+    return `/dashboard/images/integrations/${props.integrationId}-dark.png`;
+  }
+
+  if (props.integrationLogo.endsWith('-dark.png')) {
+    return `/dashboard/images/integrations/${props.integrationLogo}`;
+  }
+
+  if (props.integrationLogo.endsWith('.png')) {
+    return `/dashboard/images/integrations/${props.integrationLogo.replace(
+      /\.png$/,
+      '-dark.png'
+    )}`;
+  }
+
+  return `/dashboard/images/integrations/${props.integrationLogo}`;
+});
 
 const openDeletePopup = () => {
   if (dialogRef.value) {
@@ -69,11 +95,11 @@ const confirmDeletion = () => {
     >
       <div class="flex h-16 w-16 items-center justify-center flex-shrink-0">
         <img
-          :src="`/dashboard/images/integrations/${integrationId}.png`"
+          :src="integrationLogoLight"
           class="max-w-full rounded-md border border-n-weak shadow-sm block dark:hidden bg-n-alpha-3 dark:bg-n-alpha-2"
         />
         <img
-          :src="`/dashboard/images/integrations/${integrationId}-dark.png`"
+          :src="integrationLogoDark"
           class="max-w-full rounded-md border border-n-weak shadow-sm hidden dark:block bg-n-alpha-3 dark:bg-n-alpha-2"
         />
       </div>

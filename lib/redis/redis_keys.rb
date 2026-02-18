@@ -9,6 +9,8 @@ module Redis::RedisKeys
   # Whether a conversation is muted ?
   CONVERSATION_MUTE_KEY = 'CONVERSATION::%<id>d::MUTED'.freeze
   CONVERSATION_DRAFT_MESSAGE = 'CONVERSATION::%<id>d::DRAFT_MESSAGE'.freeze
+  # Buffer key for debouncing AgentOS runs on message bursts
+  AGENTOS_MESSAGE_BUFFER_KEY = 'AGENTOS_MESSAGE_BUFFER::%<hook_id>d::%<conversation_id>d'.freeze
 
   ## User Keys
   # SSO Auth Tokens

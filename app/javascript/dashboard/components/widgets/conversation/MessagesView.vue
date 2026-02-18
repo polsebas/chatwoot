@@ -9,6 +9,7 @@ import { useSnakeCase } from 'dashboard/composables/useTransformKeys';
 import ReplyBox from './ReplyBox.vue';
 import MessageList from 'next/message/MessageList.vue';
 import ConversationLabelSuggestion from './conversation/LabelSuggestion.vue';
+import PendingAgentResponsePanel from './PendingAgentResponsePanel.vue';
 import Banner from 'dashboard/components/ui/Banner.vue';
 import Spinner from 'dashboard/components-next/spinner/Spinner.vue';
 
@@ -40,6 +41,7 @@ export default {
   components: {
     MessageList,
     ReplyBox,
+    PendingAgentResponsePanel,
     Banner,
     ConversationLabelSuggestion,
     Spinner,
@@ -125,6 +127,7 @@ export default {
       const userList = this.typingUsersList;
       if (this.isAnyoneTyping) {
         const [i18nKey, params] = getTypingUsersText(userList);
+        /* eslint-disable-next-line @intlify/vue-i18n/no-dynamic-keys */
         return this.$t(i18nKey, params);
       }
 
@@ -230,11 +233,11 @@ export default {
     unreadMessageLabel() {
       const count =
         this.unreadMessageCount > 9 ? '9+' : this.unreadMessageCount;
-      const label =
+      const unreadLabel =
         this.unreadMessageCount > 1
-          ? 'CONVERSATION.UNREAD_MESSAGES'
-          : 'CONVERSATION.UNREAD_MESSAGE';
-      return `${count} ${this.$t(label)}`;
+          ? this.$t('CONVERSATION.UNREAD_MESSAGES')
+          : this.$t('CONVERSATION.UNREAD_MESSAGE');
+      return `${count} ${unreadLabel}`;
     },
     inboxSupportsReplyTo() {
       const incoming = this.inboxHasFeature(INBOX_FEATURES.REPLY_TO);
@@ -243,6 +246,12 @@ export default {
         !this.is360DialogWhatsAppChannel;
 
       return { incoming, outgoing };
+    },
+    pendingAgentResponse() {
+      return (
+        this.$store.getters.getPendingAgentResponse(this.currentChat?.id) ||
+        null
+      );
     },
   },
 
@@ -520,6 +529,11 @@ export default {
           />
         </div>
       </div>
+      <PendingAgentResponsePanel
+        v-if="pendingAgentResponse && currentChat.id"
+        :pending="pendingAgentResponse"
+        :conversation-id="currentChat.id"
+      />
       <ReplyBox
         :pop-out-reply-box="isPopOutReplyBox"
         @update:pop-out-reply-box="isPopOutReplyBox = $event"

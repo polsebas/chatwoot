@@ -34,8 +34,19 @@ class ActionCableConnector extends BaseActionCableConnector {
       'conversation.updated': this.onConversationUpdated,
       'account.cache_invalidated': this.onCacheInvalidate,
       'copilot.message.created': this.onCopilotMessageCreated,
+      'agent_response.pending': this.onAgentResponsePending,
     };
   }
+
+  onAgentResponsePending = data => {
+    const conversationId = data.conversation_id;
+    if (conversationId) {
+      this.app.$store.dispatch('setPendingAgentResponse', {
+        conversationId,
+        pending: data,
+      });
+    }
+  };
 
   // eslint-disable-next-line class-methods-use-this
   onReconnect = () => {

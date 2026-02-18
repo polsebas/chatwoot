@@ -19,7 +19,29 @@ class InstallationConfig < ApplicationRecord
   # https://discuss.rubyonrails.org/t/cve-2022-32224-possible-rce-escalation-bug-with-serialized-columns-in-active-record/81017
   # FIX ME : fixes breakage of installation config. we need to migrate.
   # Fix configuration in application.rb
-  serialize :serialized_value, coder: YAML, type: ActiveSupport::HashWithIndifferentAccess
+  class SerializedValueCoder
+    PERMITTED_CLASSES = [ActiveSupport::HashWithIndifferentAccess].freeze
+
+    def self.dump(value)
+      return if value.nil?
+      return value if value.is_a?(String)
+
+      YAML.dump(value)
+    end
+
+    def self.load(value)
+      return {}.with_indifferent_access if value.blank?
+      return value.with_indifferent_access if value.is_a?(Hash)
+      return {}.with_indifferent_access unless value.is_a?(String)
+
+      parsed = YAML.safe_load(value, permitted_classes: PERMITTED_CLASSES, aliases: true)
+      parsed.is_a?(Hash) ? parsed.with_indifferent_access : {}.with_indifferent_access
+    rescue Psych::Exception, TypeError
+      {}.with_indifferent_access
+    end
+  end
+
+  serialize :serialized_value, coder: SerializedValueCoder, type: ActiveSupport::HashWithIndifferentAccess
 
   before_validation :set_lock
   validates :name, presence: true
@@ -35,7 +57,8 @@ class InstallationConfig < ApplicationRecord
   def value
     # This is an extra hack again cause of the YAML serialization, in case of new object initialization in super admin
     # It was throwing error as the default value of column '{}' was failing in deserialization.
-    return {}.with_indifferent_access if new_record? && @attributes['serialized_value']&.value_before_type_cast == '{}'
+    raw_default = @attributes['serialized_value']&.value_before_type_cast
+    return {}.with_indifferent_access if new_record? && (raw_default == '{}' || raw_default == {})
 
     serialized_value[:value]
   end

@@ -173,6 +173,17 @@ class ActionCableListener < BaseListener
     broadcast(account, [user.pubsub_token], CONVERSATION_MENTIONED, conversation.push_event_data)
   end
 
+  def agent_response_pending(event)
+    pending = event.data[:pending_agent_response]
+    return if pending.blank?
+
+    conversation = pending.conversation
+    account = conversation.account
+    tokens = user_tokens(account, conversation.inbox.members)
+
+    broadcast(account, tokens, AGENT_RESPONSE_PENDING, pending.push_event_data)
+  end
+
   private
 
   def account_token(account)

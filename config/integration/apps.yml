@@ -11,7 +11,7 @@
 ########################################################
 webhooks:
   id: webhook
-  logo: webhooks.png
+  logo: webhook.png
   i18n_key: webhooks
   action: /webhook
   hook_type: account
@@ -128,9 +128,110 @@ dialogflow:
       },
     ]
   visible_properties: ['project_id', 'region']
+
+agentos:
+  id: agentos
+  # NOTE: We reuse an existing icon for now. A dedicated icon can be added later.
+  logo: dashboard_apps.png
+  i18n_key: agentos
+  hook_type: inbox
+  allow_multiple_hooks: true
+  settings_json_schema:
+    {
+      'type': 'object',
+      'properties':
+        {
+          'base_url': { 'type': 'string' },
+          'tenant_id': { 'type': 'string' },
+          'security_key': { 'type': 'string' },
+          'buffer_seconds': { 'type': ['integer', 'string'] },
+          'sync_contact_attributes': { 'type': 'boolean' },
+          'target_kind': { 'type': 'string', 'enum': ['agent', 'team'] },
+          'target_id': { 'type': 'string' },
+          'response_mode': { 'type': 'string', 'enum': ['auto', 'review_with_countdown'] },
+          'review_countdown_seconds': { 'type': ['integer', 'string'] },
+        },
+      'required': ['base_url', 'target_kind', 'target_id'],
+      'additionalProperties': false,
+    }
+  settings_form_schema:
+    [
+      {
+        'label': 'AgentOS Base URL',
+        'type': 'text',
+        'name': 'base_url',
+        'validation': 'required',
+        'placeholder': 'http://host.docker.internal:8000',
+      },
+      {
+        'label': 'Tenant ID (UUID, optional)',
+        'type': 'text',
+        'name': 'tenant_id',
+        'validation': '',
+        'placeholder': 'e.g. 1b478ac1-a1ed-4a7b-8d19-f3d5a671d408',
+      },
+      {
+        'label': 'API Key (optional)',
+        'type': 'text',
+        'name': 'security_key',
+        'validation': '',
+      },
+      {
+        'label': 'Message buffer (seconds)',
+        'type': 'number',
+        'name': 'buffer_seconds',
+        'validation': '',
+        'placeholder': 'e.g. 3',
+        'help': 'Debounce bursts of incoming messages before running AgentOS (prevents oversaturating).',
+      },
+      {
+        'label': 'Sync customer data to contact',
+        'type': 'checkbox',
+        'name': 'sync_contact_attributes',
+        'validation': '',
+        'help': 'If AgentOS returns datos_cliente, merge it into the Contact custom attributes (excluding sensitive card fields).',
+      },
+      {
+        'label': 'Target type',
+        'type': 'select',
+        'name': 'target_kind',
+        'default': 'agent',
+        'options': [
+          { 'label': 'Agent', 'value': 'agent' },
+          { 'label': 'Team', 'value': 'team' },
+        ],
+      },
+      {
+        'label': 'Agent type (tipo_agente) or default',
+        'type': 'text',
+        'name': 'target_id',
+        'validation': 'required',
+        'placeholder': 'assistant (or default)',
+      },
+      {
+        'label': 'Response mode',
+        'type': 'select',
+        'name': 'response_mode',
+        'default': 'auto',
+        'options': [
+          { 'label': 'Automatic', 'value': 'auto' },
+          { 'label': 'Review with countdown', 'value': 'review_with_countdown' },
+        ],
+        'help': 'When "Review with countdown" is selected, agent responses are held for admin approval before sending.',
+      },
+      {
+        'label': 'Review countdown (seconds)',
+        'type': 'number',
+        'name': 'review_countdown_seconds',
+        'validation': '',
+        'placeholder': '30',
+        'help': 'Seconds to wait for admin decision when response mode is "Review with countdown". Default: 30.',
+      },
+    ]
+  visible_properties: ['base_url', 'tenant_id', 'buffer_seconds', 'sync_contact_attributes', 'target_kind', 'target_id', 'response_mode', 'review_countdown_seconds']
 google_translate:
   id: google_translate
-  logo: google-translate.png
+  logo: google_translate.png
   i18n_key: google_translate
   action: /google_translate
   hook_type: account

@@ -135,6 +135,14 @@ Rails.application.routes.draw do
                   post :retry
                 end
               end
+              resource :pending_agent_response, only: [:show], path: 'pending_agent_response', controller: 'pending_agent_responses'
+              resources :pending_agent_responses, only: [], path: 'pending_agent_responses' do
+                member do
+                  post :approve
+                  post :correct
+                  post :discard
+                end
+              end
               resources :assignments, only: [:create]
               resources :labels, only: [:create, :index]
               resource :participants, only: [:show, :create, :update, :destroy]
@@ -300,6 +308,12 @@ Rails.application.routes.draw do
             resources :hooks, only: [:show, :create, :update, :destroy] do
               member do
                 post :process_event
+              end
+            end
+            resource :agentos, controller: 'agentos', only: [] do
+              collection do
+                get :agents
+                get :teams
               end
             end
             resource :slack, only: [:create, :update, :destroy], controller: 'slack' do
