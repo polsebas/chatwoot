@@ -2,62 +2,49 @@
 import { reactive, ref, computed, onMounted, watch } from 'vue';
 import { useStore, useMapGetter } from 'dashboard/composables/store';
 import { useI18n } from 'vue-i18n';
-import { useWindowSize } from '@vueuse/core';
 import { useUISettings } from 'dashboard/composables/useUISettings';
-import { vOnClickOutside } from '@vueuse/components';
 import { useAlert } from 'dashboard/composables';
 import { ExceptionWithMessage } from 'shared/helpers/CustomErrors';
 import { debounce } from '@chatwoot/utils';
-import { useKeyboardEvents } from 'dashboard/composables/useKeyboardEvents';
 import { emitter } from 'shared/helpers/mitt';
 import { BUS_EVENTS } from 'shared/constants/busEvents';
 import {
-  searchContacts,
+  createContactSearcher,
   createNewContact,
   fetchContactableInboxes,
   processContactableInboxes,
   mergeInboxDetails,
 } from 'dashboard/components-next/NewConversation/helpers/composeConversationHelper';
-import wootConstants from 'dashboard/constants/globals';
 
+import Popover from 'dashboard/components-next/popover/Popover.vue';
 import ComposeNewConversationForm from 'dashboard/components-next/NewConversation/components/ComposeNewConversationForm.vue';
 
 const props = defineProps({
-  alignPosition: {
-    type: String,
-    default: 'left',
-  },
   contactId: {
     type: String,
     default: null,
   },
-  isModal: {
-    type: Boolean,
-    default: false,
+  align: {
+    type: String,
+    default: 'end',
   },
 });
 
 const emit = defineEmits(['close']);
 
+const searchContacts = createContactSearcher();
 const store = useStore();
 const { t } = useI18n();
-const { width: windowWidth } = useWindowSize();
 
 const { fetchSignatureFlagFromUISettings } = useUISettings();
 
-const isSmallScreen = computed(
-  () => windowWidth.value < wootConstants.SMALL_SCREEN_BREAKPOINT
-);
-
-const viewInModal = computed(() => props.isModal || isSmallScreen.value);
-
+const popoverRef = ref(null);
 const contacts = ref([]);
 const selectedContact = ref(null);
 const targetInbox = ref(null);
 const isCreatingContact = ref(false);
 const isFetchingInboxes = ref(false);
 const isSearching = ref(false);
-const showComposeNewConversation = ref(false);
 
 const formState = reactive({
   message: '',
@@ -94,28 +81,22 @@ const directUploadsEnabled = computed(
 
 const activeContact = computed(() => contactById.value(props.contactId));
 
-const composePopoverClass = computed(() => {
-  if (viewInModal.value) return '';
-
-  return props.alignPosition === 'right'
-    ? 'absolute ltr:left-0 ltr:right-[unset] rtl:right-0 rtl:left-[unset]'
-    : 'absolute rtl:left-0 rtl:right-[unset] ltr:right-0 ltr:left-[unset]';
-});
-
 const onContactSearch = debounce(
   async query => {
     isSearching.value = true;
     contacts.value = [];
     try {
-      contacts.value = await searchContacts(query);
+      const results = await searchContacts(query);
+      // null means the request was aborted (a newer search is in-flight),
+      if (results === null) return;
+      contacts.value = results;
       isSearching.value = false;
     } catch (error) {
-      useAlert(t('COMPOSE_NEW_CONVERSATION.CONTACT_SEARCH.ERROR_MESSAGE'));
-    } finally {
       isSearching.value = false;
+      useAlert(t('COMPOSE_NEW_CONVERSATION.CONTACT_SEARCH.ERROR_MESSAGE'));
     }
   },
-  300,
+  400,
   false
 );
 
@@ -138,6 +119,7 @@ const handleSelectedContact = async ({ value, action, ...rest }) => {
     contact = rest;
   }
   selectedContact.value = contact;
+  contacts.value = [];
   if (contact?.id) {
     isFetchingInboxes.value = true;
     try {
@@ -168,7 +150,7 @@ const clearSelectedContact = () => {
 };
 
 const closeCompose = () => {
-  showComposeNewConversation.value = false;
+  popoverRef.value?.hide();
   if (!props.contactId) {
     // If contactId is passed as prop
     // Then don't allow to remove the selected contact
@@ -176,7 +158,6 @@ const closeCompose = () => {
   }
   targetInbox.value = null;
   resetContacts();
-  emit('close');
 };
 
 const discardCompose = () => {
@@ -209,8 +190,15 @@ const createConversation = async ({ payload, isFromWhatsApp }) => {
   }
 };
 
-const toggle = () => {
-  showComposeNewConversation.value = !showComposeNewConversation.value;
+const onPopoverShow = () => {
+  // Flag to prevent triggering drag n drop,
+  // When compose modal is active
+  emitter.emit(BUS_EVENTS.NEW_CONVERSATION_MODAL, true);
+};
+
+const onPopoverHide = () => {
+  emitter.emit(BUS_EVENTS.NEW_CONVERSATION_MODAL, false);
+  emit('close');
 };
 
 watch(
@@ -238,64 +226,23 @@ watch(
   { immediate: true, deep: true }
 );
 
-const handleClickOutside = () => {
-  if (!showComposeNewConversation.value) return;
-
-  showComposeNewConversation.value = false;
-  emit('close');
-};
-
-const onModalBackdropClick = () => {
-  if (!viewInModal.value) return;
-  handleClickOutside();
-};
-
 onMounted(() => resetContacts());
-
-const keyboardEvents = {
-  Escape: {
-    action: () => {
-      if (showComposeNewConversation.value) {
-        showComposeNewConversation.value = false;
-        emit('close');
-        emitter.emit(BUS_EVENTS.NEW_CONVERSATION_MODAL, false);
-      }
-    },
-  },
-};
-
-useKeyboardEvents(keyboardEvents);
 </script>
 
 <template>
-  <div
-    v-on-click-outside="[
-      handleClickOutside,
-      // Fixed and edge case https://github.com/chatwoot/chatwoot/issues/10785
-      // This will prevent closing the compose conversation modal when the editor Create link popup is open
-      { ignore: ['div.ProseMirror-prompt'] },
-    ]"
-    class="relative"
-    :class="{
-      'z-50': showComposeNewConversation && !viewInModal,
-    }"
+  <Popover
+    ref="popoverRef"
+    :align="align"
+    :show-content-border="false"
+    @show="onPopoverShow"
+    @hide="onPopoverHide"
   >
-    <slot
-      name="trigger"
-      :is-open="showComposeNewConversation"
-      :toggle="toggle"
-    />
-    <div
-      v-if="showComposeNewConversation"
-      :class="{
-        'fixed z-50 bg-n-alpha-black1 backdrop-blur-[4px] flex items-start pt-[clamp(3rem,15vh,12rem)] justify-center inset-0':
-          viewInModal,
-      }"
-      @click.self="onModalBackdropClick"
-    >
+    <template #default="{ isOpen }">
+      <slot name="trigger" :is-open="isOpen" />
+    </template>
+    <template #content>
       <ComposeNewConversationForm
         :form-state="formState"
-        :class="[{ 'mt-2': !viewInModal }, composePopoverClass]"
         :contacts="contacts"
         :contact-id="contactId"
         :is-loading="isSearching"
@@ -317,6 +264,6 @@ useKeyboardEvents(keyboardEvents);
         @create-conversation="createConversation"
         @discard="discardCompose"
       />
-    </div>
-  </div>
+    </template>
+  </Popover>
 </template>

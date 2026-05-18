@@ -51,6 +51,7 @@ import {
 
 import {
   appendSignature,
+  collapseSelection,
   findNodeToInsertImage,
   getContentNode,
   insertAtCursor,
@@ -66,6 +67,7 @@ import {
 import {
   hasPressedEnterAndNotCmdOrShift,
   hasPressedCommandAndEnter,
+  isEscape,
 } from 'shared/helpers/KeyboardHelpers';
 import { createTypingIndicator } from '@chatwoot/utils';
 import { checkFileSizeLimit } from 'shared/helpers/FileHelper';
@@ -202,6 +204,11 @@ const editorRoot = useTemplateRef('editorRoot');
 const imageUpload = useTemplateRef('imageUpload');
 const editor = useTemplateRef('editor');
 
+const isEditorMenuPopover = computed(
+  () =>
+    editorRoot.value?.classList.contains('popover-prosemirror-menu') ?? false
+);
+
 const handleCopilotAction = actionKey => {
   if (actionKey === 'improve_selection' && editorView?.state) {
     const { from, to } = editorView.state.selection;
@@ -211,7 +218,7 @@ const handleCopilotAction = actionKey => {
       emit('executeCopilotAction', 'improve', selectedText);
     }
   } else {
-    emit('executeCopilotAction', actionKey);
+    emit('executeCopilotAction', actionKey, props.modelValue);
   }
 
   showSelectionMenu.value = false;
@@ -308,7 +315,12 @@ const plugins = computed(() => {
 const sendWithSignature = computed(() => {
   // this is considered the source of truth, we watch this property
   // on change, we toggle the signature in the editor
-  if (props.allowSignature && !props.isPrivate && props.channelType) {
+  if (
+    props.allowSignature &&
+    !props.isPrivate &&
+    props.channelType &&
+    !props.disabled
+  ) {
     return fetchSignatureFlagFromUISettings(props.channelType);
   }
 
@@ -431,6 +443,7 @@ function reloadState(content = props.modelValue) {
 }
 
 function addSignature() {
+  if (props.disabled) return;
   let content = props.modelValue;
   // see if the content is empty, if it is before appending the signature
   // we need to add a paragraph node and move the cursor at the start of the editor
@@ -449,6 +462,7 @@ function addSignature() {
 }
 
 function removeSignature() {
+  if (props.disabled) return;
   if (!props.signature) return;
   let content = props.modelValue;
   content = removeSignatureHelper(
@@ -484,6 +498,7 @@ function setToolbarPosition() {
 function setMenubarPosition({ selection } = {}) {
   const wrapper = editorRoot.value;
   if (!selection || !wrapper) return;
+  if (!isEditorMenuPopover.value) return;
 
   const rect = wrapper.getBoundingClientRect();
   const isRtl = getComputedStyle(wrapper).direction === 'rtl';
@@ -502,7 +517,9 @@ function setMenubarPosition({ selection } = {}) {
 
 function checkSelection(editorState) {
   showSelectionMenu.value = false;
-  const hasSelection = editorState.selection.from !== editorState.selection.to;
+  const { selection } = editorState;
+  // Skip NodeSelection (from Esc -> selectParentNode); only text ranges count.
+  const hasSelection = !selection.empty && !selection.node;
   if (hasSelection === isTextSelected.value) return;
 
   isTextSelected.value = hasSelection;
@@ -698,12 +715,17 @@ function handleLineBreakWhenCmdAndEnterToSendEnabled(event) {
 }
 
 function onKeydown(event) {
+  if (isEscape(event)) {
+    collapseSelection(editorView);
+    return true;
+  }
   if (isEnterToSendEnabled()) {
     handleLineBreakWhenEnterToSendEnabled(event);
   }
   if (isCmdPlusEnterToSendEnabled()) {
     handleLineBreakWhenCmdAndEnterToSendEnabled(event);
   }
+  return false;
 }
 
 function createEditorView() {
@@ -731,6 +753,9 @@ function createEditorView() {
       blur: () => {
         if (props.disabled) return;
         typingIndicator.stop();
+        // PM keeps its selection on blur — clear the menu flags manually.
+        isTextSelected.value = false;
+        editorRoot.value?.classList.remove('has-selection');
         emit('blur');
       },
       paste: (view, event) => {
@@ -779,6 +804,11 @@ watch(
 );
 
 watch(
+  computed(() => props.disabled),
+  () => editorView?.setProps({})
+);
+
+watch(
   computed(() => props.updateSelectionWith),
   (newValue, oldValue) => {
     if (!editorView) return;
@@ -800,7 +830,7 @@ watch(
 
 watch(sendWithSignature, newValue => {
   // see if the allowSignature flag is true
-  if (props.allowSignature) {
+  if (props.allowSignature && !props.disabled) {
     toggleSignatureInEditor(newValue);
   }
 });
@@ -821,6 +851,8 @@ onMounted(() => {
     focusEditorInputField();
   }
 });
+
+defineExpose({ focusEditorInputField });
 
 // BUS Event to insert text or markdown into the editor at the
 // current cursor position.
@@ -866,8 +898,12 @@ useEmitter(BUS_EVENTS.INSERT_INTO_RICH_EDITOR, insertContentIntoEditor);
       v-if="showSelectionMenu"
       v-on-click-outside="handleClickOutside"
       :has-selection="isTextSelected"
+      :is-editor-menu-popover="isEditorMenuPopover"
+      :editor-content="modelValue"
+      :conversation-id="conversationId"
       :show-selection-menu="showSelectionMenu"
       :show-general-menu="false"
+      class="copilot-editor-menu"
       @execute-copilot-action="handleCopilotAction"
     />
     <input
@@ -965,14 +1001,43 @@ useEmitter(BUS_EVENTS.INSERT_INTO_RICH_EDITOR, insertContentIntoEditor);
 }
 
 .ProseMirror-woot-style {
-  @apply overflow-auto min-h-[5rem] max-h-[7.5rem];
+  @apply overflow-auto;
+}
+
+.ProseMirror-woot-style:not(
+    :where(.resizable-editor-wrapper .ProseMirror-woot-style)
+  ) {
+  @apply min-h-[5rem] max-h-[7.5rem];
+}
+
+// Resizable editor wrapper styles
+.resizable-editor-wrapper {
+  .ProseMirror-woot-style {
+    min-height: clamp(
+      var(--editor-min-allowed, var(--editor-min-height, 5rem)),
+      var(--editor-height, var(--editor-min-height, 5rem)),
+      var(--editor-max-allowed, var(--editor-max-height, 7.5rem))
+    );
+    max-height: clamp(
+      var(--editor-min-allowed, var(--editor-min-height, 5rem)),
+      var(--editor-height, var(--editor-min-height, 5rem)),
+      var(--editor-max-allowed, var(--editor-max-height, 7.5rem))
+    );
+    transition:
+      min-height var(--editor-height-transition, 180ms ease),
+      max-height var(--editor-height-transition, 180ms ease);
+  }
+}
+
+.ProseMirror-prompt-backdrop::backdrop {
+  @apply bg-n-alpha-black1 backdrop-blur-[4px];
 }
 
 .ProseMirror-prompt {
-  @apply z-[9999] bg-n-alpha-3 backdrop-blur-[100px] border border-n-strong p-6 shadow-xl rounded-xl;
+  @apply bg-n-alpha-3 border border-n-strong p-6 shadow-xl rounded-xl w-96 !important;
 
   h5 {
-    @apply text-n-slate-12 mb-1.5;
+    @apply text-n-slate-12 mb-3;
   }
 
   .ProseMirror-prompt-buttons {
@@ -1024,6 +1089,17 @@ useEmitter(BUS_EVENTS.INSERT_INTO_RICH_EDITOR, insertContentIntoEditor);
 
 .editor-warning__message {
   @apply text-n-ruby-9 dark:text-n-ruby-9 font-normal text-sm pt-1 pb-0 px-0;
+}
+
+// Default copilot menu position (non-popover editors like components-next/Editor)
+// When popover-prosemirror-menu is NOT on the wrapper, anchor below the menubar
+:not(.popover-prosemirror-menu) > .copilot-editor-menu {
+  top: 1.5rem !important;
+
+  [dir='rtl'] & {
+    left: auto !important;
+    right: 0 !important;
+  }
 }
 
 // Float editor menu

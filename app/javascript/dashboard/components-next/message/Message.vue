@@ -113,6 +113,7 @@ const props = defineProps({
     validator: value => Object.values(MESSAGE_STATUS).includes(value),
   },
   attachments: { type: Array, default: () => [] },
+  call: { type: Object, default: null }, // eslint-disable-line vue/no-unused-properties
   content: { type: String, default: null },
   contentAttributes: { type: Object, default: () => ({}) },
   contentType: {
@@ -129,6 +130,7 @@ const props = defineProps({
   inReplyTo: { type: Object, default: null }, // eslint-disable-line vue/no-unused-properties
   isEmailInbox: { type: Boolean, default: false },
   private: { type: Boolean, default: false },
+  additionalAttributes: { type: Object, default: () => ({}) }, // eslint-disable-line vue/no-unused-properties
   sender: { type: Object, default: null },
   senderId: { type: Number, default: null },
   senderType: { type: String, default: null },
@@ -172,7 +174,10 @@ const variant = computed(() => {
     return MESSAGE_VARIANTS.AGENT;
   }
 
-  const isBot = !props.sender || props.sender.type === SENDER_TYPES.AGENT_BOT;
+  const isBot =
+    props.sender?.type === SENDER_TYPES.AGENT_BOT ||
+    props.senderType === SENDER_TYPES.AGENT_BOT ||
+    (!props.sender && !props.additionalAttributes?.senderName);
   if (isBot && props.messageType === MESSAGE_TYPES.OUTGOING) {
     return MESSAGE_VARIANTS.BOT;
   }
@@ -450,12 +455,13 @@ const avatarInfo = computed(() => {
     };
   }
 
-  // If no sender, return bot info
+  // If no sender, check for Slack (or other integration) sender info
   if (!props.sender) {
-    return {
-      name: t('CONVERSATION.BOT'),
-      src: '',
-    };
+    const { senderName, senderAvatarUrl } = props.additionalAttributes || {};
+    if (senderName) {
+      return { name: senderName, src: senderAvatarUrl ?? '' };
+    }
+    return { name: t('CONVERSATION.BOT'), src: '' };
   }
 
   const { sender } = props;

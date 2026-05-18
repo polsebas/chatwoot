@@ -72,7 +72,7 @@ const isNewTagInValidType = computed(() =>
 
 const showInput = computed(() =>
   props.mode === MODE.SINGLE
-    ? isFocused.value && !tags.value.length
+    ? !tags.value.length
     : isFocused.value || !tags.value.length
 );
 
@@ -247,7 +247,7 @@ const handleBlur = e => emit('blur', e);
         v-if="showDropdownMenu"
         :menu-items="filteredMenuItems"
         :is-searching="isLoading"
-        class="ltr:left-0 rtl:right-0 z-[100] top-8 overflow-y-auto max-h-56 w-[inherit] max-w-md dark:!outline-n-slate-5"
+        class="ltr:left-0 rtl:right-0 z-[100] top-8 max-h-56 w-[inherit] max-w-md dark:!outline-n-slate-5"
         @action="handleDropdownAction"
       />
     </div>
