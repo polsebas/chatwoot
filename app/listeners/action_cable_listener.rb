@@ -179,7 +179,10 @@ class ActionCableListener < BaseListener
 
     conversation = pending.conversation
     account = conversation.account
-    tokens = user_tokens(account, conversation.inbox.members)
+    # Broadcast to all agents of the account (not just inbox members) so any
+    # agent with the dashboard open can review and approve the pending response.
+    # user_tokens already merges in all administrators, so everyone is covered.
+    tokens = user_tokens(account, account.agents)
 
     broadcast(account, tokens, AGENT_RESPONSE_PENDING, pending.push_event_data)
   end

@@ -36,7 +36,7 @@ services:
       - mailhog
       - sidekiq
     ports:
-      - 3000:3000
+      - 3001:3000
     env_file: .env
     environment:
       - VITE_DEV_SERVER_HOST=vite
@@ -90,7 +90,6 @@ services:
 
   postgres:
     image: pgvector/pgvector:pg16
-    restart: always
     ports:
       - '5432:5432'
     volumes:
@@ -102,7 +101,6 @@ services:
 
   redis:
     image: redis:alpine
-    restart: always
     command: ["sh", "-c", "redis-server --requirepass \"${REDIS_PASSWORD:-}\""]
     env_file: .env
     environment:

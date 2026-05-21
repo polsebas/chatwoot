@@ -373,12 +373,17 @@ export const mutations = {
   },
   [types.SET_PENDING_AGENT_RESPONSE](_state, { conversationId, pending }) {
     if (conversationId && pending) {
-      _state.pendingAgentResponses[conversationId] = pending;
+      _state.pendingAgentResponses = {
+        ..._state.pendingAgentResponses,
+        [conversationId]: pending,
+      };
     }
   },
   [types.CLEAR_PENDING_AGENT_RESPONSE](_state, conversationId) {
     if (conversationId) {
-      delete _state.pendingAgentResponses[conversationId];
+      const updated = { ..._state.pendingAgentResponses };
+      delete updated[conversationId];
+      _state.pendingAgentResponses = updated;
     }
   },
 };

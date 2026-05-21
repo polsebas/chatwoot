@@ -61,6 +61,7 @@ class PendingAgentResponse < ApplicationRecord
     {
       id: id,
       conversation_id: conversation_id,
+      conversation_display_id: conversation.display_id,
       account_id: account_id,
       content: content,
       source: source,

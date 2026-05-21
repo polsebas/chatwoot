@@ -2,6 +2,7 @@
 
 class Integrations::Agentos::Client
   DEFAULT_TIMEOUT = 10
+  OPEN_TIMEOUT = 15  # seconds to establish connection; read timeout is set per-request
 
   def initialize(base_url:, security_key: nil, tenant_id: nil, timeout: DEFAULT_TIMEOUT)
     @base_url = base_url.to_s.strip
@@ -172,11 +173,23 @@ class Integrations::Agentos::Client
   end
 
   def get(path, query: nil)
-    HTTParty.get(url(path), headers: headers, query: query, timeout: @timeout)
+    HTTParty.get(
+      url(path),
+      headers: headers,
+      query: query,
+      timeout: @timeout,
+      open_timeout: OPEN_TIMEOUT
+    )
   end
 
   def post_json(path, payload)
-    HTTParty.post(url(path), headers: headers, body: payload.to_json, timeout: @timeout)
+    HTTParty.post(
+      url(path),
+      headers: headers,
+      body: payload.to_json,
+      timeout: @timeout,
+      open_timeout: OPEN_TIMEOUT
+    )
   end
 
   def url(path)

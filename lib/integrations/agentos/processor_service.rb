@@ -5,9 +5,9 @@ class Integrations::Agentos::ProcessorService < Integrations::BotProcessorServic
 
   pattr_initialize [:event_name!, :hook!, :event_data!]
 
-  # `talkToAgent` can take a long time depending on the LLM/provider and tools.
-  # We've seen runs take multiple minutes in local testing.
-  TALK_TO_AGENT_TIMEOUT = 300
+  # `talkToAgent` can take many minutes for complex agent resolutions (tools, multi-step, etc).
+  # Chatwoot must wait for the full response; 10 minutes allows for long-running agent runs.
+  TALK_TO_AGENT_TIMEOUT = 600
 
   def process_content(message)
     content = event_data[:correction_content].presence || message_content(message)
@@ -217,7 +217,7 @@ class Integrations::Agentos::ProcessorService < Integrations::BotProcessorServic
   def create_pending_agent_response(message, content)
     conv = message.conversation
     countdown_sec = hook.settings['review_countdown_seconds'].to_i
-    countdown_sec = 30 if countdown_sec <= 0
+    countdown_sec = 120 if countdown_sec <= 0
     expires_at = countdown_sec.seconds.from_now
 
     metadata = {

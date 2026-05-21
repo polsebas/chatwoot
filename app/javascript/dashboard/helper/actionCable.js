@@ -40,7 +40,8 @@ class ActionCableConnector extends BaseActionCableConnector {
   }
 
   onAgentResponsePending = data => {
-    const conversationId = data.conversation_id;
+    const conversationId =
+      data.conversation_display_id ?? data.conversation_id;
     if (conversationId) {
       this.app.$store.dispatch('setPendingAgentResponse', {
         conversationId,

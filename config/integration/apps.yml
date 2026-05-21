@@ -257,8 +257,8 @@ agentos:
         'type': 'number',
         'name': 'review_countdown_seconds',
         'validation': '',
-        'placeholder': '30',
-        'help': 'Seconds to wait for admin decision when response mode is "Review with countdown". Default: 30.',
+        'placeholder': '120',
+        'help': 'Seconds to wait for admin decision when response mode is "Review with countdown". Default: 120.',
       },
     ]
   visible_properties: ['base_url', 'tenant_id', 'buffer_seconds', 'sync_contact_attributes', 'target_kind', 'target_id', 'response_mode', 'review_countdown_seconds']

@@ -343,6 +343,10 @@ es:
       name: 'Dialogflow'
       short_description: 'Build chatbots to handle initial queries before transferring to agents.'
       description: 'Construye chatbots con Dialogflow e intégralos fácilmente en tu bandeja de entrada. Estos bots pueden manejar consultas iniciales antes de transferirlas a un agente de servicio al cliente.'
+    agentos:
+      name: 'AgentOS (Agno)'
+      short_description: 'Enruta conversaciones a agentes o equipos de Agno AgentOS.'
+      description: 'Conectá Agno AgentOS para enviar los mensajes entrantes a un agente o equipo configurado y responder automáticamente en la conversación.'
     google_translate:
       name: 'Traductor de Google'
       short_description: 'Automatically translate customer messages for agents.'
